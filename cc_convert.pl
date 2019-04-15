@@ -11,6 +11,21 @@ my $filename = 'compile_commands.json';
 open(my $fh, '<:encoding(UTF-8)', $filename)
     or die "Could not open file '$filename' $!";
 
+my %ghs_mapping = (
+    "a" => "b"
+);
+
+my %gnu_mapping = (
+    "a" => "b"
+);
+
+my %mapping = (
+    "cxxarm" => \%ghs_mapping,
+    "cxxarm64" => \%ghs_mapping,
+    "gcc" => \%gnu_mapping,
+    "g++" => \%gnu_mapping,
+);
+
 my %compile_args;
 
 while (my $row = <$fh>) {
