@@ -26,6 +26,5 @@ while (my $row = <$fh>) {
         } while ($ccarg !~ /\s*\],/i);
         my $compilation_unit = pop @file_args;
         $compile_args{$compilation_unit} = join(" ",@file_args);
-        print "--> $compilation_unit\n";
     }
 }
