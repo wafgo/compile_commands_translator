@@ -16,17 +16,32 @@ my %ghs_mapping = (
 );
 
 my %gnu_mapping = (
-    "a" => "b"
+    "a" => "b",
+    "b" => "c"
 );
 
 my %mapping = (
-    "cxxarm" => \%ghs_mapping,
-    "cxxarm64" => \%ghs_mapping,
-    "gcc" => \%gnu_mapping,
-    "g++" => \%gnu_mapping,
+    "cxxarm:cxxarm64" => \%ghs_mapping,
+    "cc:gcc:g++" => \%gnu_mapping,
 );
 
 my %compile_args;
+
+sub get_map_table_from_cc {
+    my $cc = $_[0];
+    my @cc_names = keys %mapping;
+
+    foreach (@cc_names) {
+        my @supported_compilers = split(":", $_);
+        foreach (@supported_compilers) {
+            if (/\s*$cc\s*/) {
+                return $mapping{join(":",@supported_compilers)};
+            }
+        }
+    }
+    return 0;
+}
+
 
 while (my $row = <$fh>) {
     my $ccarg;
@@ -41,5 +56,9 @@ while (my $row = <$fh>) {
         } while ($ccarg !~ /\s*\],/i);
         my $compilation_unit = pop @file_args;
         $compile_args{$compilation_unit} = join(" ",@file_args);
+        my $ret = get_map_table_from_cc($file_args[0]);
+        if ( $ret ) {
+            print $ret->{"b"} . "\n";
+        }
     }
 }
