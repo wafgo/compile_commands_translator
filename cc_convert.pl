@@ -9,9 +9,23 @@ use Getopt::Long qw(GetOptionsFromString);
 use warnings;
 use strict;
 
-my $filename = 'compile_commands.json';
-open(my $fh, '<:encoding(UTF-8)', $filename)
-    or die "Could not open file '$filename' $!";
+$|++;
+
+my $ifile = 'compile_commands.json';
+my $ofile = 'compile_commands.json.mod';
+
+my $line_count_total = `wc -l < $ifile`;
+my $wc_err = $?;
+
+if ($wc_err) {
+    print "WARN: Could not find 'wc' command from coreutils to count lines in input file. Install coreutils (e.g. apt install coreutils) to get a useful progress report during parsing\n";
+}
+
+chomp($line_count_total);
+
+open(my $ofh, '>', $ofile) or die "Could not open file '$ofile' $!";
+open(my $fh, '<:encoding(UTF-8)', $ifile)
+    or die "Could not open file '$ifile' $!";
 
 
 my %mapping = (
@@ -48,6 +62,7 @@ sub translate_to_ghs_options {
     my @srcs;
 
     my $ret = GetOptionsFromString($ostr,"c=s" => \@srcs, "o=s" => \@objs, "I=s" =>  \@inc_paths, "os_dir=s" => \@inc_paths,"D=s" => \@defines);
+
     foreach my $path (@inc_paths, @objs, @srcs) {
         # make e.g D:\ to /d/ for msys systems
         if ($path =~ /^([a-zA-Z]):(.*)\s*/){
@@ -81,8 +96,6 @@ sub translate_to_ghs_options {
         # this can theoretically not happen
         print "Horrible error occured -> not supported compiler\n";
     }
-    #print "---> orig ops = @$options\n";
-    #print "---> conv ops = @conv_ops\n";
     return @conv_ops;
 }
 
@@ -104,13 +117,9 @@ sub get_translator {
 my $bear_style = 0;
 my $count = 0;
 
-#print "[\n";
-
 while (my $row = <$fh>) {
- #   print "{\n";
     my $ccarg;
     my @file_args;
-   # chomp $row;
     if ($bear_style == 1) {
         if ( $row =~ /\s*\"arguments\s*\":\s*\[/i) {
             do{
@@ -132,7 +141,7 @@ while (my $row = <$fh>) {
                 my $drive = lc $1;
                 $pt = "/" . "$drive" . "$2";
             }
-            print "\"$fd\": \"$pt\",\n";
+            print $ofh "\"$fd\": \"$pt\",\n";
         } elsif ( $row =~ /\s*\"command\s*\":\s*\"(.*)\"/i) {
             my @options = split(" ", $1);
             foreach (@options) {
@@ -145,18 +154,22 @@ while (my $row = <$fh>) {
             if ($translator) {
                 @translated_cmds = $translator->($base_name_compiler, \@options);
             } else {
-                print "No Translator found for CC = $base_name_compiler\n";
+                print $ofh "No Translator found for CC = $base_name_compiler\n";
             }
-            print "\"command\" : \"@translated_cmds\",\n";
-            #print "--> @translated_cmds \n";
-            #print "$count $base_name_compiler : @options";
-            #exit;
+            print $ofh "\"command\" : \"@translated_cmds\",\n";
         } else {
-            print "$row";
+            print $ofh "$row";
         }
     }
-    #$count++;
-    #if ($count > 20) {
-#        exit 7;
-#    }
+
+    if ( $wc_err == 0) {
+        my $perc_proc = (($count * 100.00)/$line_count_total);
+        printf "Progress: %.1f\% (line $count/$line_count_total) \r", $perc_proc;
+    } else {
+        printf "Progress: line $count of ??? lines \r";
+    }
+    $count++;
 }
+print "\n";
+close $fh;
+close $ofh;
