@@ -24,7 +24,7 @@ if ($wc_err) {
 chomp($line_count_total);
 
 open(my $ofh, '>', $ofile) or die "Could not open file '$ofile' $!";
-open(my $fh, '<:encoding(UTF-8)', $ifile)
+open(my $ifh, '<:encoding(UTF-8)', $ifile)
     or die "Could not open file '$ifile' $!";
 
 
@@ -117,13 +117,13 @@ sub get_translator {
 my $bear_style = 0;
 my $count = 0;
 
-while (my $row = <$fh>) {
+while (my $row = <$ifh>) {
     my $ccarg;
     my @file_args;
     if ($bear_style == 1) {
         if ( $row =~ /\s*\"arguments\s*\":\s*\[/i) {
             do{
-                $ccarg = <$fh>;
+                $ccarg = <$ifh>;
                 if ($ccarg =~ /\s*\"(.+)\"/ ) {
                     push @file_args, $1;
                 }
@@ -171,5 +171,5 @@ while (my $row = <$fh>) {
     $count++;
 }
 print "\n";
-close $fh;
+close $ifh;
 close $ofh;
