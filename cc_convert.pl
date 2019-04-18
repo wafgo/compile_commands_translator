@@ -47,11 +47,14 @@ sub translate_to_ghs_options {
         }
     }
     my $ostr = join(" ", @$options);
+    my @os_paths;
+
     #fixme: read this from some file
-    my @inc_paths = ("/opt/ghs/7.1.6_2018.1.4/include/arm64",
-                     "/opt/ghs/7.1.6_2018.1.4/include/integrity",
+    my @inc_paths = ("/opt/ghs/7.1.6_2018.1.4/include",
+                     "/opt/ghs/7.1.6_2018.1.4/include/arm64",
                      "/opt/ghs/7.1.6_2018.1.4/ansi",
                      "/opt/ghs/7.1.6_2018.1.4/scxx");
+
     my @defines = ("__EDG__",
                    "__ghs__",
                    "__ARM64__",
@@ -61,9 +64,13 @@ sub translate_to_ghs_options {
     my @objs;
     my @srcs;
 
-    my $ret = GetOptionsFromString($ostr,"c=s" => \@srcs, "o=s" => \@objs, "I=s" =>  \@inc_paths, "os_dir=s" => \@inc_paths,"D=s" => \@defines);
+    my $ret = GetOptionsFromString($ostr,"c=s" => \@srcs, "o=s" => \@objs, "I=s" =>  \@inc_paths, "os_dir=s" => \@os_paths,"D=s" => \@defines);
 
-    foreach my $path (@inc_paths, @objs, @srcs) {
+    foreach my $path ( @os_paths) {
+        $path = $path ."/INTEGRITY-include";
+    }
+
+    foreach my $path (@inc_paths, @objs, @srcs, @os_paths) {
         # make e.g D:\ to /d/ for msys systems
         if ($path =~ /^([a-zA-Z]):(.*)\s*/){
             my $drive = lc $1;
@@ -72,7 +79,10 @@ sub translate_to_ghs_options {
     }
 
     my @conv_ops;
-    foreach (@inc_paths) {
+
+    push (@conv_ops, "-nostdinc -nostdinc++");
+
+    foreach (@inc_paths, @os_paths) {
         $_ = "-I" . $_;
         push @conv_ops, $_;
     }
@@ -80,6 +90,9 @@ sub translate_to_ghs_options {
         $_ = "-D" . $_;
         push @conv_ops, $_;
     }
+    #undefine some x86 specifics for clang
+    push(@conv_ops, "-U__x86_64__ -U__i386__ -U__GNUC__ -U__linux -U__linux__");
+
     foreach (@objs) {
         $_ = "-o " . $_;
         push @conv_ops, $_;
@@ -96,6 +109,7 @@ sub translate_to_ghs_options {
         # this can theoretically not happen
         print "Horrible error occured -> not supported compiler\n";
     }
+
     return @conv_ops;
 }
 
